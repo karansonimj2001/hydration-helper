@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
-import { Capacitor } from '@capacitor/core'; // keep core import only; browser/app loaded dynamically
-
 interface User {
   id: string;
   email: string | null;
@@ -48,19 +46,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // On native, listen for deep link callbacks and let Supabase process the URL
     let appUrlListener: any | null = null;
-    if (Capacitor.isNativePlatform()) {
+    const isNative =
+      typeof window !== "undefined" &&
+      (window as any).Capacitor &&
+      typeof (window as any).Capacitor.isNativePlatform === "function" &&
+      (window as any).Capacitor.isNativePlatform();
+
+    if (isNative) {
       (async () => {
         try {
-          const { App: CapacitorApp } = await import('@capacitor' + '/app');
-          appUrlListener = CapacitorApp.addListener('appUrlOpen', async (event: any) => {
-            try {
-              await supabase.auth.getSessionFromUrl({ storeSession: true });
-            } catch (err) {
-              // ignore
-            }
+          const { App: CapacitorApp } = await import("@capacitor/app");
+          appUrlListener = CapacitorApp.addListener("appUrlOpen", async () => {
+            await supabase.auth.getSessionFromUrl({ storeSession: true });
           });
         } catch (err) {
-          // ignore dynamic import failure on web build
+          console.warn("Native listener failed", err);
         }
       })();
     }
@@ -116,8 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ✅ FIXED GOOGLE LOGIN
   const signInWithProvider = async (provider: 'google') => {
-    const isNative = Capacitor.isNativePlatform();
-
+    const isNative = typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.() === true;
     const redirectTo = isNative
       ? 'com.karansonimj.hydrationhelper://auth-callback'
       : window.location.origin;
@@ -136,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const url = (data as any)?.url;
       if (url) {
         try {
-          const { Browser } = await import('@capacitor' + '/browser');
+          const { Browser } = await import('@capacitor/browser');
           await Browser.open({ url });
         } catch (err) {
           console.warn('failed to open capacitor browser', err);
