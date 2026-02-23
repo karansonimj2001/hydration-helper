@@ -18,4 +18,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      external: (id: string) => id.startsWith('@capacitor/')
+    }
+  }
 }));

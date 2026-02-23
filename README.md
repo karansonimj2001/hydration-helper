@@ -1,58 +1,23 @@
-# Welcome to your Lovable project
+# Welcome to your project
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+This repository contains the source for the application. Edit files locally or in your preferred IDE.
 
-## How can I edit this code?
+## Local development
 
-There are several ways of editing your application.
+Requirements: Node.js and npm (or yarn).
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Quick start:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
+## Technologies
 
 - Vite
 - TypeScript
@@ -60,14 +25,31 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
-## How can I deploy this project?
+## Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Build for production with:
 
-## Can I connect a custom domain to my Lovable project?
+```sh
+npm run build
+```
 
-Yes, you can!
+Serve the `dist` folder with any static hosting provider.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Custom domain
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Configure your hosting provider's domain settings to point to the deployed `dist` site.
+
+## Supabase OAuth redirect setup
+
+- **Android (native app)**: Add the custom scheme redirect `com.karansonimj.hydrationhelper://auth-callback` to your Supabase project's list of Redirect URLs. The Android app already has an intent-filter to handle this scheme. After updating Supabase, run:
+
+```bash
+npx cap sync android
+# Rebuild the Android app in Android Studio or via CLI
+```
+
+- **Web / Development**: Add your web origin (for example `http://localhost:5173` during local dev or your production domain `https://example.com`) to Supabase Redirect URLs so OAuth from a browser redirects back to the correct site.
+
+- **iOS (if applicable)**: If you target iOS, add a URL scheme matching `com.karansonimj.hydrationhelper` in Xcode (`Info.plist` -> URL types) or configure the appropriate Associated Domains for universal links.
+
+Make sure both the custom scheme and the web origin are listed in your Supabase project's Redirect URLs; otherwise OAuth flows may open the browser instead of returning to the app.

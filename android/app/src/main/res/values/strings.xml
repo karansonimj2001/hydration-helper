@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Hydration Helper</string>
+    <string name="title_activity_main">Hydration Helper</string>
+    <string name="package_name">com.karansonimj.hydrationhelper</string>
+    <string name="custom_url_scheme">com.karansonimj.hydrationhelper</string>
+</resources>

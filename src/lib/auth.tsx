@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { Capacitor } from '@capacitor/core'; // keep core import only; browser/app loaded dynamically
 
 interface User {
   id: string;
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
@@ -44,20 +46,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
+    // On native, listen for deep link callbacks and let Supabase process the URL
+    let appUrlListener: any | null = null;
+    if (Capacitor.isNativePlatform()) {
+      (async () => {
+        try {
+          const { App: CapacitorApp } = await import('@capacitor' + '/app');
+          appUrlListener = CapacitorApp.addListener('appUrlOpen', async (event: any) => {
+            try {
+              await supabase.auth.getSessionFromUrl({ storeSession: true });
+            } catch (err) {
+              // ignore
+            }
+          });
+        } catch (err) {
+          // ignore dynamic import failure on web build
+        }
+      })();
+    }
+
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
+      if (appUrlListener && typeof appUrlListener.remove === 'function') {
+        appUrlListener.remove();
+      }
     };
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return !error;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (!error) {
+        const { data } = await supabase.auth.getUser();
+        const u = data.user;
+        setUser(u ? { id: u.id, email: u.email } : null);
+        navigate('/');
+      }
+      return !error;
+    } catch (e) {
+      return false;
+    }
   };
 
   const signup = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return !error;
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (!error) {
+        // Try to fetch user (may not exist until email confirmation). If present, set and navigate.
+        try {
+          const { data } = await supabase.auth.getUser();
+          const u = data.user;
+          setUser(u ? { id: u.id, email: u.email } : null);
+        } catch (e) {
+          // ignore
+        }
+        navigate('/');
+      }
+      return !error;
+    } catch (e) {
+      return false;
+    }
   };
 
   const logout = async () => {
@@ -65,8 +114,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  // ✅ FIXED GOOGLE LOGIN
   const signInWithProvider = async (provider: 'google') => {
-    await supabase.auth.signInWithOAuth({ provider });
+    const isNative = Capacitor.isNativePlatform();
+
+    const redirectTo = isNative
+      ? 'com.karansonimj.hydrationhelper://auth-callback'
+      : window.location.origin;
+
+    // For web, this will redirect the browser. For native, request the provider URL
+    // then open it in the Capacitor Browser so the OAuth flow can return via deep link.
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo }
+    });
+
+    // Log the provider URL and any error so we can verify the redirect parameter
+    console.log('oauth url:', (data as any)?.url, 'error:', error);
+
+    if (isNative) {
+      const url = (data as any)?.url;
+      if (url) {
+        try {
+          const { Browser } = await import('@capacitor' + '/browser');
+          await Browser.open({ url });
+        } catch (err) {
+          console.warn('failed to open capacitor browser', err);
+          // fallback: open in window
+          window.open(url, '_blank');
+        }
+      }
+    }
   };
 
   return (
